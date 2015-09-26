@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/haibin/bookstore/config"
@@ -9,8 +10,13 @@ import (
 )
 
 func main() {
-	config.InitDB("postgres://haibin@localhost/bookstore?sslmode=disable")
+	db, err := config.NewDB("postgres://haibin@localhost/bookstore?sslmode=disable")
+	if err != nil {
+		log.Panic(err)
+	}
 
-	http.HandleFunc("/books", handlers.BooksIndex)
+	env := handlers.NewEnv(db)
+
+	http.HandleFunc("/books", env.BooksIndex)
 	http.ListenAndServe(":3000", nil)
 }

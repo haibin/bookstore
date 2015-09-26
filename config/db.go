@@ -7,16 +7,16 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var DB *sql.DB
-
-func InitDB(dataSourceName string) {
-	var err error
-	DB, err = sql.Open("postgres", dataSourceName)
+func NewDB(dataSourceName string) (*sql.DB, error) {
+	db, err := sql.Open("postgres", dataSourceName)
 	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	if err = db.Ping(); err != nil {
 		log.Panic(err)
 	}
 
-	if err = DB.Ping(); err != nil {
-		log.Panic(err)
-	}
+	return db, nil
 }

@@ -1,6 +1,6 @@
 package models
 
-import "github.com/haibin/bookstore/config"
+import "database/sql"
 
 type Book struct {
 	Isbn   string
@@ -9,8 +9,8 @@ type Book struct {
 	Price  float32
 }
 
-func AllBooks() ([]*Book, error) {
-	rows, err := config.DB.Query("SELECT * FROM books")
+func AllBooks(db *sql.DB) ([]*Book, error) {
+	rows, err := db.Query("SELECT * FROM books")
 	if err != nil {
 		return nil, err
 	}
