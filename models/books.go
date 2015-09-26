@@ -1,5 +1,7 @@
 package models
 
+import "github.com/haibin/bookstore/config"
+
 type Book struct {
 	Isbn   string
 	Title  string
@@ -8,7 +10,7 @@ type Book struct {
 }
 
 func AllBooks() ([]*Book, error) {
-	rows, err := db.Query("SELECT * FROM books")
+	rows, err := config.DB.Query("SELECT * FROM books")
 	if err != nil {
 		return nil, err
 	}
