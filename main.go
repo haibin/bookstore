@@ -34,6 +34,7 @@ func init() {
 
 func main() {
 	http.HandleFunc("/books", booksIndex)
+	http.HandleFunc("/books/show", booksShow)
 	http.ListenAndServe(":3000", nil)
 }
 
@@ -70,4 +71,33 @@ func booksIndex(w http.ResponseWriter, r *http.Request) {
 	for _, bk := range bks {
 		fmt.Fprintf(w, "%s, %s, %s, £%.2f\n", bk.isbn, bk.title, bk.author, bk.price)
 	}
+}
+
+func booksShow(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	// get isbn from query string
+	isbn := r.FormValue("isbn")
+	if isbn == "" {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	// fetch a single row
+	row := db.QueryRow("SELECT * FROM books WHERE isbn = $1", isbn)
+
+	bk := new(Book)
+	err := row.Scan(&bk.isbn, &bk.title, &bk.author, &bk.price)
+	if err == sql.ErrNoRows {
+		http.NotFound(w, r)
+		return
+	} else if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(w, "%s, %s, %s, £%.2f\n", bk.isbn, bk.title, bk.author, bk.price)
 }
