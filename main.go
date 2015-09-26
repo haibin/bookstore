@@ -5,17 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 
+	"github.com/haibin/bookstore/models"
 	_ "github.com/lib/pq"
 )
-
-type Book struct {
-	isbn   string
-	title  string
-	author string
-	price  float32
-}
 
 // TODO: remove the global
 var db *sql.DB
@@ -34,9 +27,9 @@ func init() {
 }
 
 func main() {
+	models.InitDB("postgres://haibin@localhost/bookstore?sslmode=disable")
+
 	http.HandleFunc("/books", booksIndex)
-	http.HandleFunc("/books/show", booksShow)
-	http.HandleFunc("/books/create", booksCreate)
 	http.ListenAndServe(":3000", nil)
 }
 
@@ -46,94 +39,13 @@ func booksIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// fetch a resultset
-	rows, err := db.Query("SELECT * FROM books")
+	bks, err := models.AllBooks()
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	// iterate through the rows
-	bks := make([]*Book, 0)
-	for rows.Next() {
-		bk := new(Book)
-		err := rows.Scan(&bk.isbn, &bk.title, &bk.author, &bk.price)
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		bks = append(bks, bk)
-	}
-	if err = rows.Err(); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	for _, bk := range bks {
-		fmt.Fprintf(w, "%s, %s, %s, £%.2f\n", bk.isbn, bk.title, bk.author, bk.price)
+		fmt.Fprintf(w, "%s, %s, %s, £%.2f\n", bk.Isbn, bk.Title, bk.Author, bk.Price)
 	}
-}
-
-func booksShow(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
-
-	// get isbn from query string
-	isbn := r.FormValue("isbn")
-	if isbn == "" {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
-	// fetch a single row
-	row := db.QueryRow("SELECT * FROM books WHERE isbn = $1", isbn)
-
-	bk := new(Book)
-	err := row.Scan(&bk.isbn, &bk.title, &bk.author, &bk.price)
-	if err == sql.ErrNoRows {
-		http.NotFound(w, r)
-		return
-	} else if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Fprintf(w, "%s, %s, %s, £%.2f\n", bk.isbn, bk.title, bk.author, bk.price)
-}
-
-func booksCreate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
-
-	isbn := r.FormValue("isbn")
-	title := r.FormValue("title")
-	author := r.FormValue("author")
-	if isbn == "" || title == "" || author == "" {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-	price, err := strconv.ParseFloat(r.FormValue("price"), 32)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
-	result, err := db.Exec("INSERT INTO books VALUES($1, $2, $3, $4)", isbn, title, author, price)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-	// the number of rows that the statement affected
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Fprintf(w, "Book %s created successfully (%d row affected)\n", isbn, rowsAffected)
 }
